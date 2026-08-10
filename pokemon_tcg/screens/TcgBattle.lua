@@ -13,15 +13,26 @@ end
 local Screen = {}
 Screen.__index = Screen
 Screen.isOpaque = true
+-- Wide duel surface. Extra height goes to the field (player UI), not the log.
+Screen.UI_W = 512
+Screen.UI_H = 336
+Screen.FIELD_H = 256
+Screen.CMD_H = 34
+Screen.LOG_H = Screen.UI_H - Screen.FIELD_H - Screen.CMD_H -- 46
+Screen.LOG_LINE_H = 12
+Screen.PIC_SCALE = 2
+Screen.OPP_PIC = { x = 360, y = 6 }
+Screen.YOU_PIC = { x = 24, y = 160 }
+Screen.letterboxWhite = true
 
--- GBC duel main menu (3x2). Native 8×8 font only — scaling shreds glyphs on the pixel canvas.
+-- Command row (sits in the middle band above the action log).
 local MAIN = {
-  { id = "hand",    label = "HAND",    x = 12,  y = 112 },
-  { id = "check",   label = "CHECK",   x = 52,  y = 112 },
-  { id = "retreat", label = "RETREAT", x = 100, y = 112 },
-  { id = "attack",  label = "ATTACK",  x = 12,  y = 128 },
-  { id = "power",   label = "PKMN",    label2 = "POWER", x = 72, y = 124 },
-  { id = "done",    label = "DONE",    x = 120, y = 128 },
+  { id = "hand",    label = "HAND",    x = 36,  y = 266 },
+  { id = "check",   label = "CHECK",   x = 108, y = 266 },
+  { id = "retreat", label = "RETREAT", x = 180, y = 266 },
+  { id = "attack",  label = "ATTACK",  x = 280, y = 266 },
+  { id = "power",   label = "PKMN",    label2 = "POWER", x = 360, y = 262 },
+  { id = "done",    label = "DONE",    x = 450, y = 266 },
 }
 
 
@@ -70,10 +81,20 @@ local function nameLv(mon)
   return name
 end
 
+function Screen:uiSize()
+  return Screen.UI_W, Screen.UI_H
+end
+
+-- Fill the window (same idea as Gen1 BATTLE SIZE → FILL) so the duel reads larger.
+function Screen:wantsFillScale()
+  return true
+end
+
 -- Keep GBC greens/reds/card art out of Gen1 SGB remap.
 function Screen:sgbPalettes(game)
   local P = require("src.render.PaletteFX")
-  return { P.trueColorZone(0, 0, 19, 17) }
+  -- Full 512×336 surface in 8px tiles.
+  return { P.trueColorZone(0, 0, 63, 41) }
 end
 
 
@@ -89,6 +110,9 @@ function Screen.new(game, args)
   self.subIndex = 1
   self.subItems = {}
   self.message = nil
+  self.logLines = {}
+  self.logStickBottom = true
+  self.logScroll = 1
   self.oppName = args.oppName
 
   local ok = Cache.ensure(self.mod)
@@ -117,17 +141,35 @@ end
 
 
 function Screen:setMessage(msg)
+  if msg and msg ~= "" then
+    self:pushLog(msg)
+  else
+    self.message = msg
+  end
+end
+
+function Screen:pushLog(msg)
+  if not msg or msg == "" then return end
+  -- Skip duplicate consecutive lines (setMessage + flushLog often overlap).
+  if self.logLines[#self.logLines] == msg then
+    self.message = msg
+    self.logStickBottom = true
+    return
+  end
+  self.logLines[#self.logLines + 1] = msg
+  while #self.logLines > 64 do
+    table.remove(self.logLines, 1)
+  end
   self.message = msg
+  self.logStickBottom = true
 end
 
 function Screen:flushLog()
   local b = self.battle
   if not b then return end
-  local last
   while #b.log > 0 do
-    last = table.remove(b.log, 1)
+    self:pushLog(table.remove(b.log, 1))
   end
-  if last then self.message = last end
 end
 
 function Screen:finishIfDone()
@@ -137,10 +179,10 @@ function Screen:finishIfDone()
   self.mode = "done"
   if b.result == "win" then
     Save.recordWin(self.mod)
-    self.message = "You win!"
+    self:pushLog("You win!")
   else
     Save.recordLoss(self.mod)
-    self.message = "You lose..."
+    self:pushLog("You lose...")
   end
   return true
 end
@@ -150,7 +192,7 @@ function Screen:enterMain()
   local b = self.battle
   if b.turn == "opp" then
     self.mode = "opp"
-    self.message = "Opponent's turn"
+    self:pushLog("Opponent's turn")
     return
   end
   self.mode = "main"
@@ -665,22 +707,16 @@ function Screen:update()
   end
 
   if self.mode == "main" then
-    local col = ((self.cursor - 1) % 3)
-    local row = math.floor((self.cursor - 1) / 3)
-    if input:wasPressed("left") then
-      col = (col + 2) % 3
-    elseif input:wasPressed("right") then
-      col = (col + 1) % 3
-    elseif input:wasPressed("up") then
-      row = (row + 1) % 2
-    elseif input:wasPressed("down") then
-      row = (row + 1) % 2
+    local n = #MAIN
+    if input:wasPressed("left") or input:wasPressed("up") then
+      self.cursor = self.cursor <= 1 and n or (self.cursor - 1)
+    elseif input:wasPressed("right") or input:wasPressed("down") then
+      self.cursor = self.cursor >= n and 1 or (self.cursor + 1)
     elseif input:wasPressed("a") then
       self:chooseMain()
     elseif input:wasPressed("b") then
       self.game.stack:pop()
     end
-    self.cursor = row * 3 + col + 1
     return
   end
 
@@ -705,8 +741,9 @@ end
 
 local function drawZigzag()
   love.graphics.setColor(0.18, 0.62, 0.28, 1)
-  local y0 = 50
-  for x = 0, 160, 8 do
+  -- Sit just under the opponent portrait (y=6, h=96 → bottom 102).
+  local y0 = 108
+  for x = 0, Screen.UI_W, 8 do
     love.graphics.polygon("fill",
       x, y0 + 4,
       x + 4, y0 - 2,
@@ -717,17 +754,21 @@ local function drawZigzag()
   end
 end
 
+-- One orb per 10 HP. Hollow = remaining, black = damage taken (GBC TCG style).
 local function drawHpOrbs(x, y, current, maxHp)
   local total = math.max(1, math.ceil((maxHp or 10) / 10))
-  local filled = math.ceil((current or 0) / 10)
   total = math.min(total, 10)
+  local damaged = math.max(0, math.ceil(((maxHp or 0) - (current or 0)) / 10))
+  damaged = math.min(damaged, total)
   for i = 1, total do
     local ox = x + (i - 1) * 8
-    love.graphics.setColor(0.05, 0.05, 0.05, 1)
-    if i <= filled then
-      love.graphics.circle("fill", ox + 3, y + 3, 3)
+    local cx, cy = ox + 3, y + 3
+    if i <= damaged then
+      love.graphics.setColor(0.05, 0.05, 0.05, 1)
+      love.graphics.circle("fill", cx, cy, 3)
     else
-      love.graphics.circle("line", ox + 3, y + 3, 3)
+      love.graphics.setColor(0.05, 0.05, 0.05, 1)
+      love.graphics.circle("line", cx, cy, 3)
     end
   end
 end
@@ -751,25 +792,40 @@ local function drawEnergyRow(x, y, mon)
   end
 end
 
--- Bench (dark square) · Prizes (gold card backs) · Deck (purple)
-local function drawBenchPrizeDeck(x, y, benchN, prizeN, deckN)
+-- Side panel: Bench / Prizes / Deck stacked with room to breathe.
+local function drawSideStats(x, y, benchN, prizeN, deckN)
   love.graphics.setColor(0.15, 0.15, 0.15, 1)
-  love.graphics.rectangle("fill", x, y, 6, 6)
-  drawText(tostring(benchN or 0), x + 8, y - 1)
+  love.graphics.rectangle("fill", x, y, 8, 8)
+  drawText("BENCH", x + 12, y)
+  drawText(tostring(benchN or 0), x + 60, y)
 
-  local px = x + 24
+  local py = y + 14
   local n = math.min(prizeN or 0, 6)
   for i = 1, n do
     love.graphics.setColor(0.72, 0.55, 0.12, 1)
-    love.graphics.rectangle("fill", px + (i - 1) * 2, y - (i - 1), 5, 7)
+    love.graphics.rectangle("fill", x + (i - 1) * 3, py + 1, 6, 8)
     love.graphics.setColor(0.2, 0.15, 0.05, 1)
-    love.graphics.rectangle("line", px + (i - 1) * 2, y - (i - 1), 5, 7)
+    love.graphics.rectangle("line", x + (i - 1) * 3, py + 1, 6, 8)
   end
-  drawText(tostring(prizeN or 0), px + 14, y - 1)
+  drawText("PRIZE", x + 24, py)
+  drawText(tostring(prizeN or 0), x + 72, py)
 
   love.graphics.setColor(0.35, 0.25, 0.55, 1)
-  love.graphics.rectangle("fill", x + 56, y, 5, 7)
-  drawText(tostring(deckN or 0), x + 64, y - 1)
+  love.graphics.rectangle("fill", x, py + 14, 6, 8)
+  drawText("DECK", x + 12, py + 14)
+  drawText(tostring(deckN or 0), x + 52, py + 14)
+end
+
+-- Tiny bench portraits along a side strip.
+local function drawBenchStrip(x, y, bench, downward, maxN)
+  if not bench or #bench == 0 then return end
+  maxN = maxN or 5
+  local step = downward and 28 or -28
+  for i, mon in ipairs(bench) do
+    if i > maxN then break end
+    local by = y + (i - 1) * step
+    CardGfx.drawPortrait(mon.cardId, x, by, 0.5)
+  end
 end
 
 
@@ -804,118 +860,216 @@ local function statusTag(mon)
   return ""
 end
 
+local COST_ORDER = {
+  "FIRE", "GRASS", "LIGHTNING", "WATER", "FIGHTING", "PSYCHIC", "COLORLESS",
+}
+
+local function expandCost(cost)
+  local out = {}
+  if not cost then return out end
+  for _, typ in ipairs(COST_ORDER) do
+    local n = cost[typ] or 0
+    for _ = 1, n do out[#out + 1] = typ end
+  end
+  return out
+end
+
+local function drawMoves(x, y, mon)
+  if not mon then return end
+  local Effects = V.require("effects")
+  local attacks = mon.card and mon.card.attacks or {}
+  local row = 0
+  for i, atk in ipairs(attacks) do
+    if not Effects.isPokemonPower(atk) then
+      local yy = y + row * 12
+      local costs = expandCost(atk.cost)
+      local px = x
+      if #costs == 0 then
+        love.graphics.setColor(0.55, 0.55, 0.55, 1)
+        love.graphics.rectangle("fill", px, yy + 1, 7, 7)
+        love.graphics.setColor(0, 0, 0, 1)
+        love.graphics.rectangle("line", px, yy + 1, 7, 7)
+        px = px + 10
+      else
+        for ci, typ in ipairs(costs) do
+          if ci > 4 then break end
+          drawTypePip(px, yy + 1, typ)
+          px = px + 9
+        end
+      end
+      local name = atk.name or ("ATK" .. i)
+      if #name > 9 then name = name:sub(1, 9) end
+      local dmg = atk.damage or 0
+      local ready = canPay(mon, atk.cost)
+      local label = dmg > 0 and ("%s %d"):format(name, dmg) or name
+      if ready then
+        drawText(label, px + 2, yy)
+      else
+        love.graphics.setColor(0.55, 0.55, 0.55, 1)
+        Font().draw(label, math.floor(px + 2.5), math.floor(yy + 0.5))
+        love.graphics.setColor(0, 0, 0, 1)
+      end
+      row = row + 1
+      if row >= 2 then break end
+    end
+  end
+end
+
 
 function Screen:drawField()
   local b = self.battle
   local fx = self.atkFx
   local oxs, oys = AttackFx.shake(fx, "opp")
   local pxs, pys = AttackFx.shake(fx, "player")
+  local W, FH = Screen.UI_W, Screen.FIELD_H
+  local ps = Screen.PIC_SCALE
+  local oppPic, youPic = Screen.OPP_PIC, Screen.YOU_PIC
 
   love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.rectangle("fill", 0, 0, 160, 104)
+  love.graphics.rectangle("fill", 0, 0, W, FH)
   drawZigzag()
 
   local opp, you = b.opp, b.player
 
-  drawBenchPrizeDeck(4, 4, #opp.bench, #opp.prizes, #opp.deck)
+  -- Opp: stats left, moves center, active art right
+  drawSideStats(16, 8, #opp.bench, #opp.prizes, #opp.deck)
+  drawBenchStrip(16, 56, opp.bench, true, 2)
   if opp.active then
-    drawEnergyRow(4, 14, opp.active)
-    drawTypePip(4, 26, monType(opp.active))
-    drawText(shortName(opp.active, 10), 14, 26)
+    drawEnergyRow(100, 8, opp.active)
+    drawTypePip(100, 24, monType(opp.active))
+    drawText(shortName(opp.active, 14), 112, 24)
     local ot = statusTag(opp.active)
-    if ot ~= "" then drawText(ot, 14, 34) end
+    if ot ~= "" then drawText(ot, 112, 34) end
     local ohp, omax = hpNow(opp.active)
-    drawText("HP", 4, 42)
-    drawHpOrbs(22, 42, ohp, omax)
-    CardGfx.drawPortrait(opp.active.cardId, 92 + oxs, 6 + oys, 1)
+    drawText("HP", 100, 48)
+    drawHpOrbs(122, 48, ohp, omax)
+    drawText("MOVES", 220, 16)
+    drawMoves(220, 28, opp.active)
+    CardGfx.drawPortrait(opp.active.cardId, oppPic.x + oxs, oppPic.y + oys, ps)
   end
 
+  -- You: active art left, stats + moves center, side stats right (low in field)
   if you.active then
-    CardGfx.drawPortrait(you.active.cardId, 6 + pxs, 56 + pys, 1)
-    drawEnergyRow(74, 56, you.active)
-    drawTypePip(74, 68, monType(you.active))
-    drawText(shortName(you.active, 9), 84, 68)
+    CardGfx.drawPortrait(you.active.cardId, youPic.x + pxs, youPic.y + pys, ps)
+    local ix = 168
+    drawEnergyRow(ix, 160, you.active)
+    drawTypePip(ix, 174, monType(you.active))
+    drawText(shortName(you.active, 14), ix + 12, 174)
     local yt = statusTag(you.active)
-    if yt ~= "" then drawText(yt, 84, 76) end
+    if yt ~= "" then drawText(yt, ix + 12, 184) end
     local php, pmax = hpNow(you.active)
-    drawText("HP", 74, 84)
-    drawHpOrbs(92, 84, php, pmax)
-
-    drawBenchPrizeDeck(74, 92, #you.bench, #you.prizes, #you.deck)
+    drawText("HP", ix, 198)
+    drawHpOrbs(ix + 22, 198, php, pmax)
+    drawText("MOVES", ix, 212)
+    drawMoves(ix, 222, you.active)
   end
+  drawSideStats(400, 200, #you.bench, #you.prizes, #you.deck)
+  drawBenchStrip(464, 160, you.bench, true, 2)
 
   AttackFx.draw(fx)
 end
 
 
 function Screen:drawMenuBox()
+  local W, FH, CH = Screen.UI_W, Screen.FIELD_H, Screen.CMD_H
+  -- Vertically center an 8px font line inside the command band.
+  local ty = FH + math.floor((CH - 8) / 2)
   love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.rectangle("fill", 0, 104, 160, 40)
+  love.graphics.rectangle("fill", 0, FH, W, CH)
   love.graphics.setColor(0.85, 0.15, 0.12, 1)
-  love.graphics.rectangle("line", 1, 105, 158, 38)
+  love.graphics.rectangle("line", 2, FH + 1, W - 4, CH - 2)
   love.graphics.setColor(0, 0, 0, 1)
-  love.graphics.rectangle("line", 3, 107, 154, 34)
+  love.graphics.rectangle("line", 5, FH + 4, W - 10, CH - 8)
 
   if self.mode == "main" then
     for i, item in ipairs(MAIN) do
-      drawText(item.label, item.x, item.y)
+      local iy = item.label2 and (ty - 4) or ty
+      drawText(item.label, item.x, iy)
       if item.label2 then
-        drawText(item.label2, item.x, item.y + 8)
+        drawText(item.label2, item.x, iy + 8)
       end
       if i == self.cursor then
-        drawHandCursor(item.x - 12, item.y + (item.label2 and 2 or 0))
+        drawHandCursor(item.x - 14, iy + (item.label2 and 2 or 0))
       end
     end
   elseif self.mode == "anim" then
     local name = self.atkFx and self.atkFx.name or "ATTACK"
-    if #name > 14 then name = name:sub(1, 14) end
-    drawText(name, 8, 114)
-    drawText("A: skip", 8, 128)
+    if #name > 28 then name = name:sub(1, 28) end
+    drawText(name, 16, ty)
+    drawText("A: skip", 200, ty)
   elseif self.mode == "opp" then
-    drawText(self.message or "Opponent's turn", 8, 114)
-    drawText("A: continue", 8, 128)
+    drawText(self.message or "Opponent's turn", 16, ty)
+    drawText("A: continue", 280, ty)
   elseif self.mode == "done" then
-    drawText(self.message or "Done", 8, 114)
-    drawText("A: exit", 8, 128)
+    drawText(self.message or "Done", 16, ty)
+    drawText("A: exit", 280, ty)
   else
     local modeLabel = self.mode:upper()
     if self.mode == "check" then modeLabel = "CHECK" end
-    drawText(modeLabel, 8, 110)
+    drawText(modeLabel, 16, ty)
     local item = self.subItems[self.subIndex]
     if item then
       local label = item.label or "?"
       if item.right then label = item.right .. " " .. label end
-      if #label > 17 then label = label:sub(1, 17) end
-      drawText(">" .. label, 8, 120)
+      if #label > 36 then label = label:sub(1, 36) end
+      drawText(">" .. label, 80, ty)
       if item.ok == false then
-        drawText("(need Energy)", 8, 130)
+        drawText("(need Energy)", 320, ty)
       elseif self.mode == "check" and item.hp then
-        drawText(("HP%d %d/%d A:view"):format(item.hp, self.subIndex, #self.subItems), 8, 130)
+        drawText(("HP%d %d/%d A:view"):format(item.hp, self.subIndex, #self.subItems), 320, ty)
       else
-        drawText(("%d/%d A:ok B:back"):format(self.subIndex, #self.subItems), 8, 130)
+        drawText(("%d/%d A:ok B:back"):format(self.subIndex, #self.subItems), 320, ty)
       end
     end
+  end
+end
+
+function Screen:drawLog()
+  local W = Screen.UI_W
+  local y0 = Screen.FIELD_H + Screen.CMD_H
+  local lh = Screen.UI_H - y0 -- always fill to the bottom of the canvas
+  local lineH = Screen.LOG_LINE_H
+  local visible = math.max(1, math.floor((lh - 6) / lineH))
+  love.graphics.setColor(0.96, 0.94, 0.88, 1)
+  love.graphics.rectangle("fill", 0, y0, W, lh)
+  love.graphics.setColor(0.25, 0.25, 0.25, 1)
+  love.graphics.rectangle("line", 2, y0 + 1, W - 4, lh - 2)
+  local lines = self.logLines or {}
+  if #lines == 0 then
+    love.graphics.setColor(0.45, 0.45, 0.45, 1)
+    Font().draw("LOG  Waiting...", 8, y0 + math.floor(lh / 2) - 4)
+    love.graphics.setColor(0, 0, 0, 1)
+    return
+  end
+  -- Auto-scroll: pin to newest lines whenever a message arrives.
+  local maxStart = math.max(1, #lines - visible + 1)
+  if self.logStickBottom then
+    self.logScroll = maxStart
+  else
+    self.logScroll = math.max(1, math.min(self.logScroll or maxStart, maxStart))
+  end
+  local row = 0
+  for i = self.logScroll, math.min(#lines, self.logScroll + visible - 1) do
+    local msg = lines[i]
+    if #msg > 58 then msg = msg:sub(1, 58) end
+    drawText(msg, 8, y0 + 4 + row * lineH)
+    row = row + 1
   end
 end
 
 function Screen:draw()
   if self.error then
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle("fill", 0, 0, 160, 144)
-    drawText(self.error, 8, 56)
-    drawText("B: back", 8, 120)
+    love.graphics.rectangle("fill", 0, 0, Screen.UI_W, Screen.UI_H)
+    drawText(self.error, 16, 120)
+    drawText("B: back", 16, 248)
     love.graphics.setColor(1, 1, 1, 1)
     return
   end
 
   self:drawField()
   self:drawMenuBox()
-
-  if self.message and self.mode == "main" then
-    local msg = self.message
-    if #msg > 18 then msg = msg:sub(1, 18) end
-    drawText(msg, 4, 96)
-  end
+  self:drawLog()
 
   love.graphics.setColor(1, 1, 1, 1)
 end

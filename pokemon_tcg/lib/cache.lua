@@ -59,6 +59,8 @@ function Cache.clear()
   if ok and CardGfx and CardGfx.clear then CardGfx.clear() end
   local ok2, PackGfx = pcall(function() return V.require("pack_gfx") end)
   if ok2 and PackGfx and PackGfx.clear then PackGfx.clear() end
+  local ok3, MapGfx = pcall(function() return V.require("map_gfx") end)
+  if ok3 and MapGfx and MapGfx.clear then MapGfx.clear() end
 end
 
 

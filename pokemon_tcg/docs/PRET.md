@@ -26,7 +26,11 @@ Each card’s `gfx` field is pret’s packed index:
 
 At that offset: **768** bytes of 64×48 2bpp (rgbgfx `-Z` column order) + **8** bytes GBC RGB555 palette (4 colors). See `lib/card_gfx.lua`.
 
+## Maps
+
+Overworld rooms are pret tilemaps in bank `$20` plus tileset gfx / pals. `lib/map_gfx.lua` decompresses the tilemap + half-res permission map, loads `WarpDataPointers` (`07:4099`), and draws `OWPlayerGfx` (`22:7E90`). NPCs come from `MapScripts` (`04:562a`) → `npc_map_data` + `NPCHeaderPointers` (`04:58f5`) / `Sprites` (`20:516b`) via `lib/npc_gfx.lua`. Talk scans bank-`$03` scripts (`lib/npc_script.lua`) for the first `print_*` text; duelists use header `deckId + 2` → `DeckPointers`. Walkable set: all indoor maps (`data/maps.lua`, mapIds 1–33) except the cursor overworld map.
+
 ## Scope
 
-v0.1+ decodes card stats, practice deck, and card face art from the ROM. Full attack effect scripts and authentic booster-pack tiles are still approximate.
+v0.1+ decodes cards, packs, duels, and a small walkable TCG map graph from the ROM (warps, NPCs, dialog, duel start). Full script VMs, preload events, and the overworld map UI are still approximate.
 

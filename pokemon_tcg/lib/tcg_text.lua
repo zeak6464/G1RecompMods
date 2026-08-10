@@ -35,11 +35,13 @@ function TcgText.decode(rom, textId, opts)
   opts = opts or {}
   local addr = TcgText.addr(rom, textId)
   if not addr then return nil end
+  local maxChars = opts.maxChars or (opts.keepNewlines and 280 or 96)
   local chars = {}
   local i = addr
   local guard = 0
-  while guard < 96 do
+  while guard < maxChars do
     guard = guard + 1
+    if i >= #rom then break end
     local b = rom:byte(i + 1)
     if not b or b == TX_END then break end
     if b == TX_HALFWIDTH then
@@ -52,7 +54,9 @@ function TcgText.decode(rom, textId, opts)
       end
       i = i + 1
     elseif b >= 0x20 and b <= 0x7E then
-      chars[#chars + 1] = string.char(b)
+      -- pret halfwidth often uses ` for é (Pokémon)
+      local ch = (b == 0x60) and "e" or string.char(b)
+      chars[#chars + 1] = ch
       i = i + 1
     else
       -- skip unknown control bytes
@@ -63,6 +67,32 @@ function TcgText.decode(rom, textId, opts)
   if s == "" then return nil end
   if opts.upper then s = s:upper() end
   return s
+end
+
+-- Format multi-line TCG dialog for Gen1 TextBox: 2 lines per page, A to advance.
+-- Plain "\n" between every line auto-scrolls; use "\f" page breaks instead.
+function TcgText.toTextBox(text, speaker)
+  if not text or text == "" then text = "..." end
+  local lines = {}
+  for line in (text .. "\n"):gmatch("(.-)\n") do
+    line = line:gsub("^%s+", ""):gsub("%s+$", "")
+    if line ~= "" then lines[#lines + 1] = line end
+  end
+  if speaker and speaker ~= "" then
+    table.insert(lines, 1, speaker)
+  end
+  if #lines == 0 then return "..." end
+  local pages = {}
+  for i = 1, #lines, 2 do
+    local a = lines[i]
+    local b = lines[i + 1]
+    if b then
+      pages[#pages + 1] = a .. "\n" .. b
+    else
+      pages[#pages + 1] = a
+    end
+  end
+  return table.concat(pages, "\f")
 end
 
 return TcgText

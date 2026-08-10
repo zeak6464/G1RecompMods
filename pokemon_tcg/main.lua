@@ -93,6 +93,11 @@ return function(mod)
       return screen("TcgCardView").new(game, args)
     end,
   })
+  mod.content.screens:register("TcgMap", {
+    new = function(game, args)
+      return screen("TcgMap").new(game, args)
+    end,
+  })
 
 
   mod.hooks:wrap("ui.start_menu.items", function(next, game, items)

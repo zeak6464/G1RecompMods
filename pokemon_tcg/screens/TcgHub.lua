@@ -13,6 +13,7 @@ function Hub.open(game, mod)
   Save.ensureStarterDeck(mod, Cache.get().practiceDeck)
 
   local items = {
+    { label = "MAP", value = "map" },
     { label = "BUY PACKS", value = "shop" },
     { label = "OPEN PACK", value = "open",
       right = tostring(Save.packs(mod)) },
@@ -28,7 +29,28 @@ function Hub.open(game, mod)
     onChoose = function(item, menuSelf)
       menuSelf:close()
       if item.value == "exit" then return end
-      if item.value == "shop" then mod.ui.push(game, "TcgShop")
+      if item.value == "map" then
+        local MapGfx = V.require("map_gfx")
+        local mapItems = {}
+        for key, info in pairs(MapGfx.MAPS) do
+          mapItems[#mapItems + 1] = {
+            label = info.label or key,
+            value = key,
+            mapId = info.mapId or 999,
+          }
+        end
+        table.sort(mapItems, function(a, b)
+          if a.mapId ~= b.mapId then return a.mapId < b.mapId end
+          return a.label < b.label
+        end)
+        game.stack:push(mod.ui.ListMenu.new(game, "TCG MAPS", mapItems, {
+          footer = "Pick a room to walk.",
+          onChoose = function(pick, m)
+            m:close()
+            mod.ui.push(game, "TcgMap", { map = pick.value })
+          end,
+        }))
+      elseif item.value == "shop" then mod.ui.push(game, "TcgShop")
       elseif item.value == "open" then
         game.stack:push(V.require("screens.TcgPackOpen").pick(game, mod))
       elseif item.value == "collection" then mod.ui.push(game, "TcgCollection")

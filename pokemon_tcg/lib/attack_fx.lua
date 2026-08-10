@@ -5,10 +5,10 @@ local CardGfx = V.require("card_gfx")
 
 local AttackFx = {}
 
--- Portrait top-left (matches TcgBattle:drawField)
+-- Portrait top-left (matches TcgBattle wide layout at 2×)
 local PORTRAIT = {
-  player = { x = 6, y = 56, w = 64, h = 48 },
-  opp = { x = 92, y = 6, w = 64, h = 48 },
+  player = { x = 24, y = 160, w = 128, h = 96 },
+  opp = { x = 360, y = 6, w = 128, h = 96 },
 }
 
 local function centerOf(side)
@@ -144,20 +144,21 @@ function AttackFx.draw(fx)
     end
   end
 
-  -- Phase 4: damage / name toast
+  -- Phase 4: damage / name toast (centered on wide field)
   if t >= 28 and t < 52 then
+    local tx, ty, tw = 200, 100, 112
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 24, 44, 112, 20)
+    love.graphics.rectangle("fill", tx, ty, tw, 20)
     love.graphics.setColor(1, 1, 1, 1)
     local name = fx.name or "ATTACK"
     if #name > 12 then name = name:sub(1, 12) end
-    Font.draw(name, 28, 46)
+    Font.draw(name, tx + 4, ty + 2)
     if (fx.damage or 0) > 0 then
       love.graphics.setColor(cr, cg, cb, 1)
-      Font.draw(tostring(fx.damage) .. "!", 100, 46)
+      Font.draw(tostring(fx.damage) .. "!", tx + 76, ty + 2)
     else
       love.graphics.setColor(0.7, 0.7, 0.7, 1)
-      Font.draw("---", 108, 46)
+      Font.draw("---", tx + 84, ty + 2)
     end
   end
 
