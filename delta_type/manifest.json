@@ -1,0 +1,20 @@
+{
+  "id": "delta_type",
+  "name": "Delta Type (Safari)",
+  "version": "1.0.0",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "category": "GAMEPLAY",
+  "game_version": ">=0.0.0-dev <1.0.0",
+  "priority": 60,
+  "permissions": [
+    "engine_internals",
+    "filesystem"
+  ],
+  "affects_link": false,
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "description": "Safari Zone only: wild Pokémon appear as Delta Types with a new type, moveset, and type-colored hue."
+}

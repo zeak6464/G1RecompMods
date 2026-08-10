@@ -1,0 +1,20 @@
+{
+  "id": "pokemon_pinball",
+  "name": "Pokémon Pinball",
+  "version": "0.1.0",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "category": "GAMEPLAY",
+  "game_version": ">=0.0.0-dev <2.0.0",
+  "priority": 61,
+  "affects_link": false,
+  "permissions": [
+    "filesystem",
+    "engine_internals"
+  ],
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "description": "GBC Pokémon Pinball in Kanto. Requires your own Pokémon Pinball (U) ROM (roms/PokemonPinball.gbc). pret/pokepinball is the rules/data guide; no ROM bytes are shipped."
+}

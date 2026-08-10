@@ -1,0 +1,20 @@
+{
+  "id": "pokemon_tcg",
+  "name": "Pokémon TCG",
+  "version": "0.1.0",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "category": "GAMEPLAY",
+  "game_version": ">=0.0.0-dev <2.0.0",
+  "priority": 60,
+  "affects_link": false,
+  "permissions": [
+    "filesystem",
+    "engine_internals"
+  ],
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "description": "GBC Pokémon TCG in Kanto. Requires your own Pokémon TCG (U) ROM (roms/PokemonTCG.gbc)."
+}

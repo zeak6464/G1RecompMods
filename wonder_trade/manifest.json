@@ -1,0 +1,19 @@
+{
+  "id": "wonder_trade",
+  "name": "Wonder Trade",
+  "version": "1.0.0",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "category": "GAMEPLAY",
+  "game_version": ">=0.0.0-dev <1.0.0",
+  "priority": 50,
+  "permissions": [
+    "engine_internals"
+  ],
+  "affects_link": false,
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "description": "Wonder Trade attendants in every Poké Center. Swap a party Pokémon for a random non-legendary."
+}
