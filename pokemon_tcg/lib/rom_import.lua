@@ -136,6 +136,7 @@ function RomImport.candidatePaths(mod)
     add(mod.save:get("rom_path"))
   end
   if mod and mod.path then
+    add(mod.path .. "/baseroms/PokemonTCG.gbc")
     -- mods/pokemon_tcg → project root roms/
     add(mod.path .. "/../../roms/PokemonTCG.gbc")
     add(mod.path .. "/../roms/PokemonTCG.gbc")
@@ -154,13 +155,20 @@ function RomImport.candidatePaths(mod)
 end
 
 function RomImport.findRom(mod)
+  -- Launcher required_imports copies the dump here; prefer that over host paths.
+  if mod and type(mod.read) == "function" then
+    local data = mod:read("baseroms/PokemonTCG.gbc")
+    if type(data) == "string" and #data > 0 then
+      return "baseroms/PokemonTCG.gbc", data
+    end
+  end
   for _, path in ipairs(RomImport.candidatePaths(mod)) do
-    local data, err = RomImport.readFile(path)
+    local data = RomImport.readFile(path)
     if data then
       return path, data
     end
   end
-  return nil, nil, "Pokémon TCG ROM not found (expected roms/PokemonTCG.gbc)"
+  return nil, nil, "Pokémon TCG ROM not found (expected launcher import)"
 end
 
 local function decodeEnergyCost(data, off)

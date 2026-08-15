@@ -1,7 +1,7 @@
 {
   "id": "pokemon_tcg",
   "name": "Pokémon TCG",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -17,5 +17,16 @@
   "dependencies": [],
   "optional_dependencies": [],
   "conflicts": [],
-  "description": "GBC Pokémon TCG from the start menu. Requires your own Pokémon TCG (U) ROM (roms/PokemonTCG.gbc)."
+  "required_imports": [
+    {
+      "id": "poketcg",
+      "name": "Pokémon TCG ROM",
+      "description": "Pokémon Trading Card Game (USA) .gbc — the pret/poketcg dump",
+      "file": "PokemonTCG.gbc",
+      "format": "raw",
+      "size": 1048576,
+      "md5": "219b2cc64e5a052003015d4bd4c622cd"
+    }
+  ],
+  "description": "GBC Pokémon TCG from the start menu. The launcher asks for your Pokémon TCG (U) ROM on enable."
 }

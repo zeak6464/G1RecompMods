@@ -54,8 +54,9 @@ function Import:draw()
   F.drawBox(0, 0, 20, 18)
   love.graphics.setColor(0, 0, 0, 1)
   F.draw("POKéMON TCG ROM", 8, 8)
-  F.draw("Need TCG (U) ROM:", 8, 24)
-  F.draw("roms/PokemonTCG.gbc", 8, 36)
+  F.draw("Need TCG (U) ROM.", 8, 24)
+  F.draw("Pick it in the", 8, 36)
+  F.draw("launcher import.", 8, 48)
   if self.error then
     local err = tostring(self.error)
     if #err > 18 then err = err:sub(1, 18) end
