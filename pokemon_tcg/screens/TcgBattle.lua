@@ -85,9 +85,36 @@ function Screen:uiSize()
   return Screen.UI_W, Screen.UI_H
 end
 
+-- Keep the 512×336 canvas while party/card overlays sit on top (Gen 1).
+function Screen:isWideBattleLayout()
+  return true
+end
+
 -- Fill the window (same idea as Gen1 BATTLE SIZE → FILL) so the duel reads larger.
 function Screen:wantsFillScale()
   return true
+end
+
+-- Gold ignores uiSize and blits stack:draw into a 160×144 letterbox.
+-- drawsWidescreen is the Gold seam that paints the full field.
+function Screen:drawsWidescreen()
+  local GameVersion = require("src.core.GameVersion")
+  return GameVersion.generation() == 2
+end
+
+function Screen:drawWidescreen(winW, winH)
+  local G = love.graphics
+  G.setColor(1, 1, 1, 1)
+  G.rectangle("fill", 0, 0, winW, winH)
+  local uw, uh = Screen.UI_W, Screen.UI_H
+  local scale = math.max(1, math.floor(math.min((winW or 0) / uw, (winH or 0) / uh)))
+  local ox = math.floor(((winW or 0) - uw * scale) / 2)
+  local oy = math.floor(((winH or 0) - uh * scale) / 2)
+  G.push()
+  G.translate(ox, oy)
+  G.scale(scale, scale)
+  self:drawUi()
+  G.pop()
 end
 
 -- Keep GBC greens/reds/card art out of Gen1 SGB remap.
@@ -1057,7 +1084,7 @@ function Screen:drawLog()
   end
 end
 
-function Screen:draw()
+function Screen:drawUi()
   if self.error then
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle("fill", 0, 0, Screen.UI_W, Screen.UI_H)
@@ -1072,6 +1099,13 @@ function Screen:draw()
   self:drawLog()
 
   love.graphics.setColor(1, 1, 1, 1)
+end
+
+function Screen:draw()
+  -- Gold already painted via drawWidescreen; drawing again would clip
+  -- the 512×336 field into the 160×144 letterbox.
+  if self:drawsWidescreen() then return end
+  self:drawUi()
 end
 
 return Screen

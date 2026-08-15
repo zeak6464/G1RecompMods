@@ -1,4 +1,6 @@
 -- Pokémon TCG mod: BYO Pokémon TCG (U) ROM → packs, binder, decks, duels, trades.
+local GameVersion = require("src.core.GameVersion")
+
 return function(mod)
   local loaded = {}
 
@@ -98,6 +100,11 @@ return function(mod)
       return screen("TcgMap").new(game, args)
     end,
   })
+  mod.content.screens:register("TcgCreate", {
+    new = function(game)
+      return screen("TcgCreate").open(game, mod)
+    end,
+  })
 
 
   mod.hooks:wrap("ui.start_menu.items", function(next, game, items)
@@ -111,15 +118,18 @@ return function(mod)
     return items
   end)
 
-  -- Celadon Mart 3F Game Boy kid opens the TCG hub.
-  mod.content.map_scripts:register("CELADON_MART_3F", {
-    talk = {
-      TEXT_CELADONMART3F_GAMEBOY_KID1 = function(game, _ow, _npc, onDone)
-        mod.ui.push(game, "TcgHub")
-        if onDone then onDone() end
-      end,
-    },
-  })
+  -- Celadon Mart 3F Game Boy kid opens the TCG hub (Gen 1 only;
+  -- map_scripts has no Gold home — use the start-menu TCG row there).
+  if GameVersion.generation() == 1 then
+    mod.content.map_scripts:register("CELADON_MART_3F", {
+      talk = {
+        TEXT_CELADONMART3F_GAMEBOY_KID1 = function(game, _ow, _npc, onDone)
+          mod.ui.push(game, "TcgHub")
+          if onDone then onDone() end
+        end,
+      },
+    })
+  end
 
   mod.options:define({
     {

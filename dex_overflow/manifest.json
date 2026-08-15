@@ -1,0 +1,20 @@
+{
+  "id": "dex_overflow",
+  "name": "Dex Overflow",
+  "version": "0.1.1",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "game_version": ">=0.0.0-dev <2.0.0",
+  "games": ["gen2"],
+  "gen2compat": true,
+  "category": "GAMEPLAY",
+  "priority": 50,
+  "permissions": [],
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "incompatible": [],
+  "experimental": false,
+  "description": "Adds Gold species past the 255 ROM-index byte. Party/dex use string ids; index is omitted."
+}

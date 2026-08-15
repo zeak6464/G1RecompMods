@@ -1,4 +1,6 @@
 -- Pokémon Pinball mod: BYO Pinball ROM → Red/Blue fields, Catch 'Em, Evolution, Map Move, bonuses.
+local GameVersion = require("src.core.GameVersion")
+
 return function(mod)
   local loaded = {}
   local V = { mod = mod }
@@ -76,39 +78,42 @@ return function(mod)
     return items
   end)
 
-  -- Celadon Game Corner attendant opens the pinball hub.
-  local pinballNpcId = nil
-  mod.events:on("map.entered", function(ev)
-    if ev.mapId ~= "GAME_CORNER" then return end
-    if pinballNpcId then
-      mod.world:removeNpc(pinballNpcId)
-      pinballNpcId = nil
-    end
-    pinballNpcId = mod.world:spawnNpc("GAME_CORNER", {
-      index = 90,
-      x = 9,
-      y = 4,
-      sprite = "SPRITE_GAMBLER",
-      movement = "STAY",
-      range = "NONE",
-      text = "TEXT_PINBALL_NPC",
-    })
-  end)
+  -- Celadon Game Corner attendant opens the pinball hub (Gen 1 only;
+  -- map_scripts has no Gold home — use the start-menu PINBALL row there).
+  if GameVersion.generation() == 1 then
+    local pinballNpcId = nil
+    mod.events:on("map.entered", function(ev)
+      if ev.mapId ~= "GAME_CORNER" then return end
+      if pinballNpcId then
+        mod.world:removeNpc(pinballNpcId)
+        pinballNpcId = nil
+      end
+      pinballNpcId = mod.world:spawnNpc("GAME_CORNER", {
+        index = 90,
+        x = 9,
+        y = 4,
+        sprite = "SPRITE_GAMBLER",
+        movement = "STAY",
+        range = "NONE",
+        text = "TEXT_PINBALL_NPC",
+      })
+    end)
 
-  mod.content.map_scripts:register("GAME_CORNER", {
-    talk = {
-      TEXT_PINBALL_NPC = {
-        { "face_player" },
-        { "ask", "Play POKeMON\nPINBALL?" },
-        { "jump_if_false", "no" },
-        { "push_screen", "PinHub" },
-        { "jump", "end" },
-        { "label", "no" },
-        { "show_text", "Maybe later!" },
-        { "label", "end" },
+    mod.content.map_scripts:register("GAME_CORNER", {
+      talk = {
+        TEXT_PINBALL_NPC = {
+          { "face_player" },
+          { "ask", "Play POKeMON\nPINBALL?" },
+          { "jump_if_false", "no" },
+          { "push_screen", "PinHub" },
+          { "jump", "end" },
+          { "label", "no" },
+          { "show_text", "Maybe later!" },
+          { "label", "end" },
+        },
       },
-    },
-  })
+    })
+  end
 
   local ok, err = Cache.ensure(mod)
   if ok then

@@ -22,6 +22,7 @@ function Hub.open(game, mod)
       right = ("%d/60"):format(#Save.deck(mod)) },
     { label = "DUEL", value = "duel" },
     { label = "TRADE", value = "trade" },
+    { label = "CREATE", value = "create" },
     { label = "EXIT", value = "exit" },
   }
 
@@ -78,6 +79,7 @@ function Hub.open(game, mod)
           }))
         end
       elseif item.value == "trade" then mod.ui.push(game, "TcgTrade")
+      elseif item.value == "create" then mod.ui.push(game, "TcgCreate")
       end
     end,
   })

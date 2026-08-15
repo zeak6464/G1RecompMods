@@ -116,10 +116,40 @@ function CardGfx.toImageData(bpp, pal)
   return img
 end
 
+function CardGfx.forget(cardId)
+  images[tonumber(cardId) or cardId] = nil
+end
+
+local function loadCustomImage(cardId)
+  local ok, Custom = pcall(function() return V.require("custom") end)
+  if not ok or not Custom then return nil end
+  local bytes = Custom.installedPic(cardId)
+  if type(bytes) ~= "string" or bytes == "" then return nil end
+  local fs = love.filesystem
+  local okFs, SaveData = pcall(require, "src.core.SaveData")
+  if okFs and SaveData and SaveData.persistenceFs then
+    local real = SaveData.persistenceFs()
+    if real and real.newFileData then fs = real end
+  end
+  if not (fs and fs.newFileData) then return nil end
+  local okFd, fd = pcall(fs.newFileData, bytes, "card.png")
+  if not okFd or not fd then return nil end
+  local okImg, data = pcall(love.image.newImageData, fd)
+  if not okImg or not data then return nil end
+  local img = love.graphics.newImage(data)
+  img:setFilter("nearest", "nearest")
+  return img
+end
+
 function CardGfx.image(cardId)
   cardId = tonumber(cardId) or cardId
   if images[cardId] then return images[cardId] end
   if not (love and love.graphics) then return nil end
+  local custom = loadCustomImage(cardId)
+  if custom then
+    images[cardId] = custom
+    return custom
+  end
   if not ensureRom() then return nil end
   local card = Cache.card(cardId)
   if not card or not card.gfx then return nil end
@@ -191,6 +221,17 @@ function CardGfx.typeColor(card)
   return c[1], c[2], c[3]
 end
 
+local function drawFallback(card, x, y, w, h)
+  if not card then return end
+  local r, g, b = CardGfx.typeColor(card)
+  love.graphics.setColor(r, g, b, 1)
+  love.graphics.rectangle("fill", x, y, w, h)
+  love.graphics.setColor(1, 1, 1, 1)
+  local Font = require("src.render.Font")
+  local letter = (card.name or "?"):sub(1, 1)
+  Font.draw(letter, x + math.floor(w / 2) - 4, y + math.floor(h / 2) - 4)
+end
+
 function CardGfx.drawFrame(cardId, x, y, scale)
   scale = pixelScale(scale)
   x, y = math.floor(x + 0.5), math.floor(y + 0.5)
@@ -202,6 +243,7 @@ function CardGfx.drawFrame(cardId, x, y, scale)
   love.graphics.setColor(0.95, 0.92, 0.82, 1)
   love.graphics.rectangle("fill", x - 1, y - 1, w + 2, h + 2)
   local ok = CardGfx.draw(cardId, x, y, scale)
+  if not ok then drawFallback(card, x, y, w, h) end
   love.graphics.setColor(1, 1, 1, 1)
   return ok
 end
@@ -216,6 +258,9 @@ function CardGfx.drawPortrait(cardId, x, y, scale)
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.rectangle("fill", x, y, w, h)
   local ok = CardGfx.draw(cardId, x, y, scale)
+  if not ok then
+    drawFallback(Cache.card(cardId), x, y, w, h)
+  end
   love.graphics.setColor(1, 1, 1, 1)
   return ok
 end

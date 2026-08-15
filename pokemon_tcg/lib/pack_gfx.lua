@@ -206,12 +206,63 @@ local function decodeImage(rom, set)
   return img
 end
 
+function PackGfx.forget(setName)
+  images[(setName or ""):upper()] = nil
+end
+
+function PackGfx.imageFromBytes(bytes)
+  if type(bytes) ~= "string" or bytes == "" then return nil end
+  if not (love and love.graphics and love.image) then return nil end
+  local fs = love.filesystem
+  local okFs, SaveData = pcall(require, "src.core.SaveData")
+  if okFs and SaveData and SaveData.persistenceFs then
+    local real = SaveData.persistenceFs()
+    if real and real.newFileData then fs = real end
+  end
+  if not (fs and fs.newFileData) then return nil end
+  local okFd, fd = pcall(fs.newFileData, bytes, "pack.png")
+  if not okFd or not fd then return nil end
+  local okImg, data = pcall(love.image.newImageData, fd)
+  if not okImg or not data then return nil end
+  local img = love.graphics.newImage(data)
+  img:setFilter("nearest", "nearest")
+  return img
+end
+
+local function loadCustomPack(setName)
+  local ok, Custom = pcall(function() return V.require("custom") end)
+  if not ok or not Custom then return nil end
+  return PackGfx.imageFromBytes(Custom.installedPackPic(setName))
+end
+
+function PackGfx.drawBytes(bytes, x, y, scale)
+  scale = math.floor((scale or 1) + 0.5)
+  if scale < 1 then scale = 1 end
+  x, y = math.floor((x or 0) + 0.5), math.floor((y or 0) + 0.5)
+  local img = PackGfx.imageFromBytes(bytes)
+  if not img then return false end
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(img, x, y, 0, scale, scale)
+  local P = require("src.render.PaletteFX")
+  if P.markTrueColor then
+    P.markTrueColor(x, y, PackGfx.WIDTH * scale, PackGfx.HEIGHT * scale)
+  end
+  return true
+end
+
 function PackGfx.image(setName)
   setName = (setName or "COLOSSEUM"):upper()
   if setName == "PREMIUM" then setName = "MYSTERY" end
+  if images[setName] ~= nil then
+    return images[setName] or nil
+  end
+  local custom = loadCustomPack(setName)
+  if custom then
+    images[setName] = custom
+    return custom
+  end
   -- ENERGY / PROMOTIONAL have no dedicated pack face art in the ROM.
   if not SETS[setName] then return nil end
-  if images[setName] ~= nil then return images[setName] end
   if not ensureRom() then return nil end
   local ok, img = pcall(decodeImage, romData, setName)
   if not ok then

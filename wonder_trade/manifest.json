@@ -1,12 +1,13 @@
 {
   "id": "wonder_trade",
   "name": "Wonder Trade",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
   "category": "GAMEPLAY",
-  "game_version": ">=0.0.0-dev <1.0.0",
+  "games": ["gen1", "gen2"],
+  "game_version": ">=0.0.0-dev <2.0.0",
   "priority": 50,
   "permissions": [
     "engine_internals"
@@ -15,5 +16,5 @@
   "dependencies": [],
   "optional_dependencies": [],
   "conflicts": [],
-  "description": "Wonder Trade attendants in every Poké Center. Swap a party Pokémon for a random non-legendary."
+  "description": "Wonder Trade attendants in every Poké Center. Swap a party Pokémon for a random shiny, perfect-DV species from everything loaded (including other mods)."
 }

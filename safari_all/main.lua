@@ -1,12 +1,14 @@
--- Safari Zone All: any wild roll inside the Safari Zone outdoor maps
--- becomes a random species from the merged pokemon registry (vanilla +
--- every loaded mod species). Levels stay on the vanilla roll.
+-- Safari Zone All: any wild roll inside the Safari Zone (Gen 1) or
+-- National Park (Gold) becomes a random species from the merged pokemon
+-- registry. Levels stay on the vanilla roll.
 
 local SAFARI = {
   SAFARI_ZONE_CENTER = true,
   SAFARI_ZONE_EAST = true,
   SAFARI_ZONE_NORTH = true,
   SAFARI_ZONE_WEST = true,
+  NATIONAL_PARK = true,
+  NATIONAL_PARK_BUG_CONTEST = true,
 }
 
 return function(mod)
@@ -36,6 +38,11 @@ return function(mod)
     return rows[r(1, #rows)]
   end
 
+  local function inSafari(mapId, ctx)
+    if mapId and SAFARI[mapId] then return true end
+    return ctx and ctx.kind == "contest"
+  end
+
   -- Content can settle after other mods load; rebuild once the game is live.
   mod.events:on("game.ready", function()
     rebuildPool()
@@ -43,9 +50,10 @@ return function(mod)
   end)
 
   -- Grass + surfing water both go through encounter.species after a roll.
+  -- Gold adds ctx.kind / daytime; the mapId test is enough for both games.
   mod.hooks:wrap("encounter.species", function(next, enc, ctx)
     enc = next(enc, ctx)
-    if not enc or not ctx or not SAFARI[ctx.mapId] then
+    if not enc or not ctx or not inSafari(ctx.mapId, ctx) then
       return enc
     end
     local species = pickSpecies(ctx.rng)
@@ -54,9 +62,9 @@ return function(mod)
   end)
 
   -- Fishing keeps bite odds, but any hooked mon becomes a random species.
-  mod.hooks:wrap("encounter.fishing", function(next, rod, mapId, candidates)
-    local enc = next(rod, mapId, candidates)
-    if not enc or not SAFARI[mapId] then
+  mod.hooks:wrap("encounter.fishing", function(next, rod, mapId, candidates, ctx)
+    local enc = next(rod, mapId, candidates, ctx)
+    if not enc or not inSafari(mapId, ctx) then
       return enc
     end
     local species = pickSpecies()

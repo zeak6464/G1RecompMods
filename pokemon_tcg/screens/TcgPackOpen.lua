@@ -33,15 +33,13 @@ function Open.pick(game, mod)
   Save.init(mod)
   local counts = Save.packCounts(mod)
   local items = {}
-  for _, set in ipairs(Save.PACK_SETS) do
+  for _, set in ipairs(Save.ownedPackSets(mod)) do
     local n = counts[set] or 0
-    if n > 0 then
-      items[#items + 1] = {
-        label = set,
-        value = set,
-        right = "x" .. tostring(n),
-      }
-    end
+    items[#items + 1] = {
+      label = set:sub(1, 12),
+      value = set,
+      right = "x" .. tostring(n),
+    }
   end
   if #items == 0 then
     return Open.new(game, { error = "No packs to open!" })

@@ -1,16 +1,17 @@
 {
   "id": "safari_all",
   "name": "Safari Zone All",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
   "category": "GAMEPLAY",
-  "game_version": ">=0.0.0-dev <1.0.0",
+  "games": ["gen1", "gen2"],
+  "game_version": ">=0.0.0-dev <2.0.0",
   "priority": 50,
   "affects_link": false,
   "dependencies": [],
   "optional_dependencies": [],
   "conflicts": [],
-  "description": "Every loaded species can appear in the Safari Zone (grass, surf, and fishing)."
+  "description": "Every loaded species can appear in the Safari Zone (Gen 1) or National Park (Gold)."
 }

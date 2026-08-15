@@ -89,8 +89,8 @@ end
 function Save.packs(mod)
   local inv = packInv(mod)
   local n = 0
-  for _, set in ipairs(Save.PACK_SETS) do
-    n = n + (inv[set] or 0)
+  for _, v in pairs(inv) do
+    n = n + (tonumber(v) or 0)
   end
   return n
 end
@@ -101,6 +101,27 @@ function Save.packCounts(mod)
   for _, set in ipairs(Save.PACK_SETS) do
     out[set] = inv[set] or 0
   end
+  for set, n in pairs(inv) do
+    if out[set] == nil then out[set] = tonumber(n) or 0 end
+  end
+  return out
+end
+
+function Save.ownedPackSets(mod)
+  local counts = Save.packCounts(mod)
+  local out, seen = {}, {}
+  local function add(set)
+    if seen[set] then return end
+    seen[set] = true
+    if (counts[set] or 0) > 0 then out[#out + 1] = set end
+  end
+  for _, set in ipairs(Save.PACK_SETS) do add(set) end
+  local extras = {}
+  for set, n in pairs(counts) do
+    if not seen[set] and (n or 0) > 0 then extras[#extras + 1] = set end
+  end
+  table.sort(extras)
+  for _, set in ipairs(extras) do add(set) end
   return out
 end
 

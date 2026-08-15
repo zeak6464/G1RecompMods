@@ -63,19 +63,26 @@ function View:drawPokemon(card)
   love.graphics.rectangle("line", 2, 2, 156, 140)
   love.graphics.rectangle("line", 4, 4, 152, 136)
 
-  -- header: type pip + name + Lv + HP
+  -- header: type pip + name, then Lv / HP right-aligned so 3-digit HP fits
   drawTypePip(8, 8, card.type)
   love.graphics.setColor(0, 0, 0, 1)
-  local name = card.name or "?"
-  if #name > 10 then name = name:sub(1, 10) end
-  F.draw(name, 18, 8)
-  F.draw(("Lv%d"):format(card.level or 0), 104, 8)
+  local hpText
   if self.maxHp ~= nil and self.damage ~= nil then
-    local cur = math.max(0, self.maxHp - self.damage)
-    F.draw(("HP%d"):format(cur), 128, 8)
+    hpText = ("HP%d"):format(math.max(0, self.maxHp - self.damage))
   else
-    F.draw(("HP%d"):format(card.hp or 0), 128, 8)
+    hpText = ("HP%d"):format(card.hp or 0)
   end
+  local lvText = ("Lv%d"):format(card.level or 0)
+  local hpX = 152 - F.width(hpText)
+  local lvX = hpX - 4 - F.width(lvText)
+  local name = card.name or "?"
+  local nameMax = math.max(16, lvX - 20)
+  while #name > 1 and F.width(name) > nameMax do
+    name = name:sub(1, #name - 1)
+  end
+  F.draw(name, 18, 8)
+  F.draw(lvText, lvX, 8)
+  F.draw(hpText, hpX, 8)
 
   -- art
   CardGfx.drawFrame(self.cardId, 48, 20, 1)
@@ -114,34 +121,38 @@ function View:drawPokemon(card)
     end
   end
 
-  -- footer stats
+  -- footer stats — keep pips off the labels and inside the inner border
   love.graphics.setColor(0, 0, 0, 1)
-  F.draw("RETREAT", 8, 112)
-  local rx = 64
+  F.draw("RETREAT", 8, 110)
+  local rx = 8 + F.width("RETREAT") + 4
   local retreat = card.retreat or 0
   if retreat <= 0 then
-    F.draw("-", rx, 112)
+    F.draw("-", rx, 110)
   else
     for i = 1, math.min(retreat, 4) do
-      drawTypePip(rx + (i - 1) * 9, 113, "COLORLESS")
+      drawTypePip(rx + (i - 1) * 9, 111, "COLORLESS")
     end
   end
 
-  F.draw("WEAK", 8, 124)
+  F.draw("WEAK", 8, 122)
+  local wx = 8 + F.width("WEAK") + 4
   if card.weakness then
-    drawTypePip(48, 125, card.weakness)
+    drawTypePip(wx, 123, card.weakness)
   else
-    F.draw("-", 48, 124)
+    F.draw("-", wx, 122)
   end
 
-  F.draw("RESIST", 72, 124)
+  F.draw("RESIST", 80, 122)
+  local rsx = 80 + F.width("RESIST") + 4
   if card.resistance then
-    drawTypePip(120, 125, card.resistance)
+    drawTypePip(rsx, 123, card.resistance)
   else
-    F.draw("-", 120, 124)
+    F.draw("-", rsx, 122)
   end
 
-  F.draw(("No.%03d"):format(card.dex or 0), 8, 134)
+  if card.dex and card.dex > 0 then
+    F.draw(("No.%03d"):format(card.dex), 8, 132)
+  end
 end
 
 function View:drawSimple(card)

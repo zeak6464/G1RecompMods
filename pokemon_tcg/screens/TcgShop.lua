@@ -73,10 +73,10 @@ local SHORT = {
 
 function Shop.open(game, mod)
   local items = {}
-  for _, set in ipairs(Pack.SETS) do
+  for _, set in ipairs(Pack.shopSets()) do
     local price = Pack.price(set)
     items[#items + 1] = {
-      label = SHORT[set] or set,
+      label = (SHORT[set] or set):sub(1, 12),
       value = set,
       right = ("%d"):format(price),
     }

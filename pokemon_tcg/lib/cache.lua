@@ -34,23 +34,27 @@ function Cache.allCards()
 end
 
 function Cache.ensure(mod)
-  if Cache.isReady() then return true, Cache.catalog end
-  local catalog, err = RomImport.import(mod)
-  if not catalog then return false, err end
-  Cache.catalog = catalog
-  if mod and mod.save then
-    mod.save:set("rom_path", catalog.path)
-    mod.save:set("rom_sha1", catalog.sha1)
+  if not Cache.isReady() then
+    local catalog, err = RomImport.import(mod)
+    if not catalog then return false, err end
+    Cache.catalog = catalog
+    if mod and mod.save then
+      mod.save:set("rom_path", catalog.path)
+      mod.save:set("rom_sha1", catalog.sha1)
+    end
+    -- Persist a lightweight JSON-less summary for debugging (card count only).
+    local dir = cacheDir()
+    if dir and love and love.filesystem then
+      love.filesystem.createDirectory(dir)
+      love.filesystem.write(dir .. "/meta.txt",
+        ("sha1=%s\npath=%s\ncards=%d\n"):format(
+          catalog.sha1, catalog.path, #catalog.cards))
+    end
   end
-  -- Persist a lightweight JSON-less summary for debugging (card count only).
-  local dir = cacheDir()
-  if dir and love and love.filesystem then
-    love.filesystem.createDirectory(dir)
-    love.filesystem.write(dir .. "/meta.txt",
-      ("sha1=%s\npath=%s\ncards=%d\n"):format(
-        catalog.sha1, catalog.path, #catalog.cards))
+  if mod then
+    V.require("custom").install(mod, Cache)
   end
-  return true, catalog
+  return true, Cache.catalog
 end
 
 function Cache.clear()
