@@ -24,6 +24,26 @@ function Screen:wantsFillScale()
   return true
 end
 
+function Screen:drawsWidescreen()
+  local GameVersion = require("src.core.GameVersion")
+  return GameVersion.generation() == 2
+end
+
+function Screen:drawWidescreen(winW, winH)
+  local G = love.graphics
+  G.setColor(1, 1, 1, 1)
+  G.rectangle("fill", 0, 0, winW, winH)
+  local uw, uh = VIEW_W, VIEW_H
+  local scale = math.max(1, math.floor(math.min((winW or 0) / uw, (winH or 0) / uh)))
+  local ox = math.floor(((winW or 0) - uw * scale) / 2)
+  local oy = math.floor(((winH or 0) - uh * scale) / 2)
+  G.push()
+  G.translate(ox, oy)
+  G.scale(scale, scale)
+  self:drawUi()
+  G.pop()
+end
+
 function Screen:sgbPalettes()
   local P = require("src.render.PaletteFX")
   return { P.trueColorZone(0, 0, 19, 17) }
@@ -208,13 +228,13 @@ local function drawSprite(img, flip, sx, sy)
   return true
 end
 
-function Screen:draw()
+function Screen:drawUi()
   local F = Font()
-  if self.error then
+  if self.error or not self.map then
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.rectangle("fill", 0, 0, VIEW_W, VIEW_H)
     love.graphics.setColor(0, 0, 0, 1)
-    F.draw(self.error, 8, 56)
+    F.draw(self.error or "Map load failed", 8, 56)
     F.draw("B: back", 8, 120)
     return
   end
@@ -270,6 +290,11 @@ function Screen:draw()
     if #msg > 18 then msg = msg:sub(1, 18) end
     F.draw(msg, 12, 123)
   end
+end
+
+function Screen:draw()
+  if self:drawsWidescreen() then return end
+  self:drawUi()
 end
 
 return Screen

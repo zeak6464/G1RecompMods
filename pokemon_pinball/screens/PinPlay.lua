@@ -22,6 +22,26 @@ function Screen:sgbPalettes()
   return { P.trueColorZone(0, 0, 19, 17) }
 end
 
+function Screen:drawsWidescreen()
+  local GameVersion = require("src.core.GameVersion")
+  return GameVersion.generation() == 2
+end
+
+function Screen:drawWidescreen(winW, winH)
+  local G = love.graphics
+  G.setColor(0, 0, 0, 1)
+  G.rectangle("fill", 0, 0, winW, winH)
+  local uw, uh = 160, 144
+  local scale = math.max(1, math.floor(math.min((winW or 0) / uw, (winH or 0) / uh)))
+  local ox = math.floor(((winW or 0) - uw * scale) / 2)
+  local oy = math.floor(((winH or 0) - uh * scale) / 2)
+  G.push()
+  G.translate(ox, oy)
+  G.scale(scale, scale)
+  self:drawUi()
+  G.pop()
+end
+
 function Screen.new(game, args)
   args = args or {}
   local self = setmetatable({}, Screen)
@@ -254,7 +274,7 @@ local function drawFlipperSprite(set, side, up, worldAnchor, camY)
   return true
 end
 
-function Screen:draw()
+function Screen:drawUi()
   local F = Font()
   if self.error then
     love.graphics.setColor(0, 0, 0, 1)
@@ -400,6 +420,11 @@ function Screen:draw()
   end
 
   love.graphics.setColor(1, 1, 1, 1)
+end
+
+function Screen:draw()
+  if self:drawsWidescreen() then return end
+  self:drawUi()
 end
 
 return Screen

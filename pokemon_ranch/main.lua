@@ -180,6 +180,7 @@ end
 local scaledCache = {}
 
 local function monColors(data, mon)
+  if GameVersion.generation() ~= 2 then return nil end
   if not (data and mon and mon.species) then return nil end
   local Palettes = require("src.world.gen2.Palettes")
   local pals = data.gen2Palettes or data.palettes

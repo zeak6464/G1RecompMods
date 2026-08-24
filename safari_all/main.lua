@@ -14,10 +14,16 @@ local SAFARI = {
 return function(mod)
   local pool
 
+  local function isSpecies(id, def)
+    if type(id) ~= "string" or type(def) ~= "table" then return false end
+    if id == "EGG" or id == "UNUSED" then return false end
+    return type(def.baseStats) == "table"
+  end
+
   local function rebuildPool()
     local rows = {}
     for id, def in mod.content.pokemon:each() do
-      if type(id) == "string" and def then
+      if isSpecies(id, def) then
         rows[#rows + 1] = id
       end
     end

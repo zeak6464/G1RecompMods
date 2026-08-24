@@ -78,8 +78,13 @@ return function(mod)
     return items
   end)
 
-  -- Celadon Game Corner attendant opens the pinball hub (Gen 1 only;
-  -- map_scripts has no Gold home — use the start-menu PINBALL row there).
+  local TEXT = "TEXT_PINBALL_NPC"
+  local function openPinball(game)
+    mod.ui.push(game, "PinHub")
+  end
+
+  -- Celadon Game Corner attendant on Gen 1. Gold has no map_scripts home, so
+  -- a clerk is patched onto both Game Corners and talk is intercepted.
   if GameVersion.generation() == 1 then
     local pinballNpcId = nil
     mod.events:on("map.entered", function(ev)
@@ -95,7 +100,7 @@ return function(mod)
         sprite = "SPRITE_GAMBLER",
         movement = "STAY",
         range = "NONE",
-        text = "TEXT_PINBALL_NPC",
+        text = TEXT,
       })
     end)
 
@@ -113,6 +118,42 @@ return function(mod)
         },
       },
     })
+  else
+    local function addClerk(mapId, x, y, index)
+      mod.content.maps:patch(mapId, {
+        objects = {
+          __append = {
+            {
+              index = index,
+              x = x,
+              y = y,
+              sprite = "SPRITE_CLERK",
+              movement = 6,
+              name = "PINBALL_ATTENDANT",
+              text = TEXT,
+            },
+          },
+        },
+      })
+    end
+    addClerk("GOLDENROD_GAME_CORNER", 10, 4, 90)
+    addClerk("CELADON_GAME_CORNER", 10, 4, 90)
+    local function isPinNpc(npc)
+      local def = npc and npc.def
+      return def and (def.name == "PINBALL_ATTENDANT" or def.text == TEXT)
+    end
+    mod.events:on("game.ready", function()
+      local OW = require("src.world.OverworldController")
+      local prev = OW.talkTo
+      function OW.talkTo(world, npc)
+        if isPinNpc(npc) then
+          openPinball((world and world.game) or mod.game)
+          return true
+        end
+        if prev then return prev(world, npc) end
+        return false
+      end
+    end)
   end
 
   local ok, err = Cache.ensure(mod)

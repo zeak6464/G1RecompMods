@@ -118,17 +118,54 @@ return function(mod)
     return items
   end)
 
-  -- Celadon Mart 3F Game Boy kid opens the TCG hub (Gen 1 only;
-  -- map_scripts has no Gold home — use the start-menu TCG row there).
+  local function openTcg(game)
+    mod.ui.push(game, "TcgHub")
+  end
+
+  -- Celadon Mart 3F Game Boy kid (Gen 1). Gold has no map_scripts home, so a
+  -- standing kid is patched onto CELADON_DEPT_STORE_3F and talk is intercepted.
   if GameVersion.generation() == 1 then
     mod.content.map_scripts:register("CELADON_MART_3F", {
       talk = {
         TEXT_CELADONMART3F_GAMEBOY_KID1 = function(game, _ow, _npc, onDone)
-          mod.ui.push(game, "TcgHub")
+          openTcg(game)
           if onDone then onDone() end
         end,
       },
     })
+  else
+    local TEXT = "TEXT_TCG_NPC"
+    mod.content.maps:patch("CELADON_DEPT_STORE_3F", {
+      objects = {
+        __append = {
+          {
+            index = 90,
+            x = 9,
+            y = 4,
+            sprite = "SPRITE_GAMEBOY_KID",
+            movement = 6,
+            name = "TCG_KID",
+            text = TEXT,
+          },
+        },
+      },
+    })
+    local function isTcgNpc(npc)
+      local def = npc and npc.def
+      return def and (def.name == "TCG_KID" or def.text == TEXT)
+    end
+    mod.events:on("game.ready", function()
+      local OW = require("src.world.OverworldController")
+      local prev = OW.talkTo
+      function OW.talkTo(world, npc)
+        if isTcgNpc(npc) then
+          openTcg((world and world.game) or mod.game)
+          return true
+        end
+        if prev then return prev(world, npc) end
+        return false
+      end
+    end)
   end
 
   mod.options:define({
