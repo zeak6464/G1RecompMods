@@ -1,0 +1,16 @@
+{
+  "id": "DebugMenu",
+  "name": "Developer Debug Menu",
+  "version": "0.2.7",
+  "api": 2,
+  "entry": "main.lua",
+  "author": "Gamecorner33 (with AI Assistant Antigravity)",
+  "description": "Essentials-style debug mode: nested Field / Map / Pokemon / Battle / Item / Player menus, live map connection and warp editing, party DEBUG editor, HUD overlay, Ctrl walk-through-walls / skip encounters.",
+  "category": "UTILITY",
+  "profile": "content",
+  "games": ["gen1", "gen2"],
+  "game_version": ">=0.0.0-dev <2.0.0",
+  "permissions": [
+    "engine_internals"
+  ]
+}
